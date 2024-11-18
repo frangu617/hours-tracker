@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime
+import pytz
 
 app = Flask(__name__)
 CORS(app)
@@ -63,13 +64,20 @@ def get_employees():
     result = [{'id': employee.id, 'name': employee.name, 'work_entries': [entry.id for entry in employee.work_entries]} for employee in employees]
     return jsonify(result)
 
+from datetime import datetime
+import pytz
+
+# Set your desired time zone (replace 'America/New_York' with your local time zone)
+LOCAL_TIMEZONE = pytz.timezone('America/New_York')
+
 @app.route('/clock-in', methods=['POST'])
 def clock_in():
     data = request.json
     employee = Employee.query.get(data['employee_id'])
     if not employee:
         return jsonify({'error': 'Employee not found'}), 404
-    now = datetime.now()
+
+    now = datetime.now(LOCAL_TIMEZONE)  # Use local time zone
     entry = WorkEntry(
         employee_id=employee.id,
         date=now.date(),
@@ -85,9 +93,12 @@ def clock_out(entry_id):
     entry = WorkEntry.query.get(entry_id)
     if not entry:
         return jsonify({'error': 'Entry not found'}), 404
-    entry.time_out = datetime.now().time()
+
+    now = datetime.now(LOCAL_TIMEZONE)  # Use local time zone
+    entry.time_out = now.time()
     db.session.commit()
     return jsonify({'message': 'Clocked out successfully!'})
+
 
 @app.route('/entries', methods=['GET'])
 def get_entries():
@@ -105,6 +116,40 @@ def get_entries():
         for entry in entries
     ]
     return jsonify(result)
+
+@app.route('/entries', methods=['POST'])
+def add_custom_entry():
+    data = request.json
+    employee = Employee.query.get(data['employee_id'])
+    if not employee:
+        return jsonify({'error': 'Employee not found'}), 404
+
+    new_entry = WorkEntry(
+        employee_id=employee.id,
+        date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
+        day_of_week=datetime.strptime(data['date'], '%Y-%m-%d').strftime('%A'),
+        time_in=datetime.strptime(data['time_in'], '%H:%M:%S').time(),
+        time_out=datetime.strptime(data['time_out'], '%H:%M:%S').time() if data['time_out'] else None
+    )
+    db.session.add(new_entry)
+    db.session.commit()
+
+    return jsonify({
+        'id': new_entry.id,
+        'date': new_entry.date.isoformat(),
+        'day_of_week': new_entry.day_of_week,
+        'time_in': new_entry.time_in.strftime('%H:%M:%S'),
+        'time_out': new_entry.time_out.strftime('%H:%M:%S') if new_entry.time_out else None
+    })
+
+@app.route('/delete-entry/<int:entry_id>', methods=['DELETE'])
+def delete_entry(entry_id):
+    entry = WorkEntry.query.get(entry_id)
+    if not entry:
+        return jsonify({'error': 'Entry not found'}), 404
+    db.session.delete(entry)
+    db.session.commit()
+    return jsonify({'message': 'Entry deleted successfully!'})
 
 @app.route('/export', methods=['GET'])
 def export_data():

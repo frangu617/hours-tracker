@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const ClockPage = () => {
+const ClockPage: React.FC = () => {
   const { state } = useLocation();
-  const { employeeId } = state;
-  const [lastAction, setLastAction] = useState(null);
+  const { employeeId } = state as { employeeId: string };
+  const [lastAction, setLastAction] = useState<"Clock In" | "Clock Out" | null>(
+    null
+  );
   const navigate = useNavigate();
 
   const fetchLastEntry = async () => {

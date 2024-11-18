@@ -4,17 +4,20 @@ import LoginPage from "./pages/LoginPage";
 import ClockPage from "./pages/ClockPage";
 import ViewHoursPage from "./pages/ViewHoursPage";
 
+import "./App.css";
+
 function App() {
   return (
     <>
-      <h1>Work Time Tracker</h1>
-      <Router>
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/clock" element={<ClockPage />} />
-          <Route path="/view-hours" element={<ViewHoursPage />} />
-        </Routes>
-      </Router>
+        <h1>Work Time Tracker</h1>
+        <Router>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/clock" element={<ClockPage />} />
+            <Route path="/view-hours" element={<ViewHoursPage />} />
+          </Routes>
+        </Router>
+    
     </>
   );
 }
