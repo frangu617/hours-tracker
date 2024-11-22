@@ -12,7 +12,8 @@ interface WorkEntry {
 }
 
 const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
   const options: Intl.DateTimeFormatOptions = {
     year: "numeric",
     month: "long",
@@ -22,12 +23,11 @@ const formatDate = (dateStr: string) => {
 };
 
 const formatTime = (timeStr: string) => {
-  const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+  const [hours, minutes] = timeStr.split(":").map(Number);
   const date = new Date();
-  date.setHours(hours, minutes, seconds);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  date.setHours(hours, minutes );
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
 };
-
 
 const groupByWeek = (entries: WorkEntry[]) => {
   const weeks: { [key: string]: WorkEntry[] } = {};
@@ -48,6 +48,7 @@ const ViewHoursPage: React.FC = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { employeeId } = state as { employeeId: string };
+  const [employee, setEmployee] = useState<{ name: string | null }>({ name: "" });
   const [entries, setEntries] = useState<WorkEntry[]>([]);
 
   useEffect(() => {
@@ -57,6 +58,13 @@ const ViewHoursPage: React.FC = () => {
           `http://127.0.0.1:5000/entries?employee_id=${employeeId}`
         );
         setEntries(response.data);
+
+        //fetch employee name
+        const employeeResponse = await axios.get(
+          `http://127.0.0.1:5000/get-employee/${employeeId}`
+        );
+        setEmployee(employeeResponse.data.name);
+
       } catch (error) {
         console.error("Error fetching entries:", error);
       }
@@ -67,7 +75,7 @@ const ViewHoursPage: React.FC = () => {
 
   const handleExport = () => {
     const doc = new jsPDF();
-    doc.text(`Hours for Employee: ${employeeId}`, 10, 10);
+    doc.text(`Hours for Employee: ${employeeId} - ${name}`, 10, 10);
 
     const weeks = groupByWeek(entries);
     let y = 20;
@@ -76,8 +84,8 @@ const ViewHoursPage: React.FC = () => {
       y += 10;
       weeks[week].forEach((entry) => {
         doc.text(
-          `  ${entry.day_of_week}: Clock-In: ${entry.time_in}, Clock-Out: ${
-            entry.time_out || "N/A"
+          `  ${entry.day_of_week}, ${formatDate(entry.date)}: Clock-In: ${formatTime(entry.time_in)}, Clock-Out: ${entry.time_out ? formatTime(
+            entry.time_out) : "N/A"
           }`,
           10,
           y
@@ -135,24 +143,31 @@ const ViewHoursPage: React.FC = () => {
     }
   };
 
-
-
   const weeks = groupByWeek(entries);
 
   return (
     <div style={{ padding: "2rem" }}>
       <h1>Hours Worked</h1>
+      <h2>
+        Employee:{" "}
+        {typeof employee === "string"
+          ? employee
+          : employee?.name
+          ? employee.name
+          : "N/A"}
+      </h2>{" "}
       <button onClick={() => navigate(-1)}>Back</button>
       <button onClick={handleExport}>Export as PDF</button>
       <button onClick={handleAddCustomTime}>Add Custom Time</button>
       {Object.keys(weeks).map((week) => (
         <div key={week}>
           <h2>Week starting: {formatDate(week)}</h2>
-          <ul>
+          <ul className="entries">
             {weeks[week].map((entry) => (
               <li key={entry.id}>
                 {entry.day_of_week}, {formatDate(entry.date)}: Clock-In:{" "}
-                {entry.time_in}, Clock-Out: {entry.time_out || "N/A"}
+                {formatTime(entry.time_in)}, Clock-Out:{" "}
+                {entry.time_out ? formatTime(entry.time_out) : "N/A"}
                 <button onClick={() => handleDelete(entry.id)}>Delete</button>
               </li>
             ))}

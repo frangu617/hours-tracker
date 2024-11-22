@@ -68,7 +68,7 @@ from datetime import datetime
 import pytz
 
 # Set your desired time zone (replace 'America/New_York' with your local time zone)
-LOCAL_TIMEZONE = pytz.timezone('America/New_York')
+LOCAL_TIMEZONE = pytz.timezone('America/Los_Angeles')
 
 @app.route('/clock-in', methods=['POST'])
 def clock_in():
@@ -78,9 +78,10 @@ def clock_in():
         return jsonify({'error': 'Employee not found'}), 404
 
     now = datetime.now(LOCAL_TIMEZONE)  # Use local time zone
+    local_date = now.astimezone(LOCAL_TIMEZONE).date()
     entry = WorkEntry(
         employee_id=employee.id,
-        date=now.date(),
+        date=local_date,
         day_of_week=now.strftime('%A'),
         time_in=now.time()
     )
@@ -95,6 +96,7 @@ def clock_out(entry_id):
         return jsonify({'error': 'Entry not found'}), 404
 
     now = datetime.now(LOCAL_TIMEZONE)  # Use local time zone
+    local_date = now.astimezone(LOCAL_TIMEZONE).date() #make sure to use local date
     entry.time_out = now.time()
     db.session.commit()
     return jsonify({'message': 'Clocked out successfully!'})
